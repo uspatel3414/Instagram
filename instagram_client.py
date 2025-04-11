@@ -1,5 +1,7 @@
 import logging
+import os
 from instagrapi import Client
+from instagrapi.exceptions import LoginRequired
 from config import (
     INSTAGRAM_USERNAME, 
     INSTAGRAM_PASSWORD, 
@@ -11,33 +13,36 @@ from utils import random_delay
 class InstagramClient:
     def __init__(self):
         self.client = Client()
+        self.session_file = "session.json"
         self.client.set_settings({
             "app_id": INSTAGRAM_APP_ID,
-            "app_secret": INSTAGRAM_APP_SECRET
+            "app_secret": INSTAGRAM_APP_SECRET,
+            "device_settings": {
+                "app_version": "269.0.0.18.75",
+                "android_version": 25,
+                "android_release": "7.1.2",
+                "phone_manufacturer": "OnePlus",
+                "phone_device": "ONEPLUS A6013",
+                "phone_model": "ONEPLUS 6T Dev",
+                "phone_dpi": "380dpi"
+            }
         })
 
     def login(self):
-        random_delay(30, 60)
         try:
-            self.client.login(INSTAGRAM_USERNAME, INSTAGRAM_PASSWORD)
-            logging.info("✅ Successfully logged into Instagram")
+            if os.path.exists(self.session_file):
+                self.client.load_settings(self.session_file)
+                self.client.login(INSTAGRAM_USERNAME, INSTAGRAM_PASSWORD)
+                logging.info("✅ Session loaded successfully")
+            else:
+                random_delay(30, 60)
+                self.client.login(INSTAGRAM_USERNAME, INSTAGRAM_PASSWORD)
+                self.client.dump_settings(self.session_file)
+                logging.info("✅ New session created")
+        except LoginRequired:
+            logging.error("❌ Session expired - creating new session")
+            self.client.relogin()
+            self.client.dump_settings(self.session_file)
         except Exception as e:
-            logging.error(f"❌ Login failed: {e}")
+            logging.error(f"❌ Login failed: {str(e)}")
             raise e
-
-    def fetch_unread_threads(self):
-        try:
-            inbox_threads = self.client.direct_threads(selected_filter='unread')
-            unread_threads = [thread for thread in inbox_threads if thread.messages]
-            logging.info(f"📩 Found {len(unread_threads)} unread threads")
-            return unread_threads
-        except Exception as e:
-            logging.error(f"❌ Error fetching threads: {e}")
-            return []
-
-    def send_message(self, thread_id, message):
-        try:
-            self.client.direct_send(message, thread_ids=[thread_id])
-            logging.info(f"✉️ Sent response to thread {thread_id}")
-        except Exception as e:
-            logging.error(f"❌ Failed to send message: {e}")
