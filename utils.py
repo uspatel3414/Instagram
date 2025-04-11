@@ -1,11 +1,11 @@
-import time
-import random
-import logging
-
-def setup_logging():
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(message)s")
-
-def random_delay(min_seconds, max_seconds):
-    delay = random.randint(min_seconds, max_seconds)
-    logging.info(f"⏳ Waiting {delay} seconds...")
-    time.sleep(delay)
+def validate_env():
+    required_vars = [
+        'INSTAGRAM_USERNAME',
+        'INSTAGRAM_PASSWORD',
+        'INSTAGRAM_APP_ID',
+        'INSTAGRAM_APP_SECRET'
+    ]
+    
+    missing = [var for var in required_vars if not os.getenv(var)]
+    if missing:
+        raise EnvironmentError(f"Missing environment variables: {', '.join(missing)}")
